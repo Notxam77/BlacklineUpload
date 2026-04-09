@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f1117">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Blackline — Log Expense</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1e2e;
+      --surface2: #222840;
+      --border: #2a2f45;
+      --accent: #4a90d9;
+      --accent-dark: #3a7ec8;
+      --text: #f0f0f0;
+      --muted: #6b7280;
+      --success-bg: #0d2318;
+      --success-border: #1a5c35;
+      --success-text: #4caf7d;
+      --error-bg: #2a0e0e;
+      --error-border: #5c1a1a;
+      --error-text: #e57373;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: 480px;
+      margin: 0 auto;
+      padding-bottom: 48px;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      background: var(--bg);
+      padding: 24px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .topbar-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .topbar-title {
+      font-size: 24px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    /* ── Form ── */
+    .form-body {
+      padding: 28px 24px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+    }
+
+    .field label {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .field input,
+    .field textarea {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px;
+      padding: 14px 16px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .field input:focus,
+    .field textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .field input::placeholder,
+    .field textarea::placeholder {
+      color: #3a4055;
+    }
+
+    .field textarea {
+      resize: none;
+      height: 96px;
+      line-height: 1.5;
+    }
+
+    /* ── Amount ── */
+    .amount-wrap { position: relative; }
+
+    .amount-wrap .dollar {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--accent);
+      font-size: 20px;
+      font-weight: 500;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .amount-wrap input {
+      padding-left: 30px;
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    /* ── Vehicle autocomplete ── */
+    .vin-input-wrap { position: relative; }
+
+    .vin-suggestions {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+      overflow: hidden;
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    .vin-suggestions div {
+      padding: 13px 16px;
+      font-size: 15px;
+      cursor: pointer;
+      color: #c0c8e0;
+      transition: background 0.1s;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .vin-suggestions div:last-child { border-bottom: none; }
+    .vin-suggestions div:hover { background: var(--surface2); }
+
+    .vin-suggestions div small {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      margin-top: 2px;
+    }
+
+    /* ── Receipt zone ── */
+    .receipt-zone {
+      background: var(--surface);
+      border: 1.5px dashed var(--border);
+      border-radius: 14px;
+      padding: 32px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      position: relative;
+      user-select: none;
+    }
+
+    .receipt-zone:hover,
+    .receipt-zone.dragover {
+      border-color: var(--accent);
+      background: #1d2235;
+    }
+
+    .receipt-zone input[type=file] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: none;
+      padding: 0;
+      font-size: 0;
+    }
+
+    .receipt-icon {
+      font-size: 30px;
+      margin-bottom: 10px;
+      display: block;
+      line-height: 1;
+    }
+
+    .receipt-label {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .receipt-label span { color: var(--accent); }
+
+    .preview-wrap {
+      display: none;
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .preview-wrap img {
+      width: 100%;
+      max-height: 220px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .preview-remove {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0,0,0,0.75);
+      color: var(--text);
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+
+    .preview-name {
+      padding: 10px 14px;
+      font-size: 12px;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Submit ── */
+    .submit-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 17px;
+      font-weight: 600;
+      padding: 17px;
+      width: 100%;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      letter-spacing: 0.01em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .submit-btn:hover:not(:disabled) { background: var(--accent-dark); }
+    .submit-btn:active:not(:disabled) { transform: scale(0.98); }
+    .submit-btn:disabled {
+      background: #2a3050;
+      color: #4a5070;
+      cursor: not-allowed;
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.25);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Status cards ── */
+    .status-card {
+      display: none;
+      border-radius: 14px;
+      padding: 32px 24px;
+      text-align: center;
+      margin: 28px 24px 0;
+    }
+
+    .status-card.success {
+      background: var(--success-bg);
+      border: 1px solid var(--success-border);
+    }
+
+    .status-card.error {
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+    }
+
+    .status-icon {
+      font-size: 40px;
+      margin-bottom: 14px;
+      display: block;
+      line-height: 1;
+    }
+
+    .status-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .status-card.success .status-title { color: var(--success-text); }
+    .status-card.error .status-title { color: var(--error-text); }
+
+    .status-sub {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .another-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--accent);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      padding: 13px;
+      width: 100%;
+      cursor: pointer;
+      margin-top: 18px;
+      transition: background 0.15s;
+    }
+
+    .another-btn:hover { background: var(--surface); }
+
+    /* ── Shake ── */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-5px); }
+      80% { transform: translateX(4px); }
+    }
+
+    .shake { animation: shake 0.4s ease; border-color: var(--error-text) !important; }
+
+    /* ── Optional: name field ── */
+    .optional-badge {
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+      background: var(--surface2);
+      color: var(--muted);
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-left: 8px;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div class="topbar-label">Blackline Auto</div>
+      <div class="topbar-title">Log Expense</div>
+    </div>
+
+    <div id="formSection">
+      <div class="form-body">
+
+        <!-- Vehicle -->
+        <div class="field">
+          <label>Vehicle</label>
+          <div class="vin-input-wrap">
+            <input type="text" id="vinInput" placeholder="Search car ID or model…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <div class="vin-suggestions" id="vinSuggestions"></div>
+          </div>
+        </div>
+
+        <!-- Amount -->
+        <div class="field">
+          <label>Amount</label>
+          <div class="amount-wrap">
+            <span class="dollar">$</span>
+            <input type="number" id="amount" inputmode="decimal" placeholder="0.00" step="0.01" min="0">
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div class="field">
+          <label>Description</label>
+          <textarea id="description" placeholder="What was this expense for? (vendor, part, service…)"></textarea>
+        </div>
+
+        <!-- Name (optional) -->
+        <div class="field">
+          <label>Your name <span class="optional-badge">optional</span></label>
+          <input type="text" id="submitterName" placeholder="Who's submitting this?">
+        </div>
+
+        <!-- Receipt -->
+        <div class="field">
+          <label>Receipt Photo <span class="optional-badge">optional</span></label>
+          <div class="receipt-zone" id="receiptZone">
+            <input type="file" id="receiptFile" accept="image/*">
+            <span class="receipt-icon">📷</span>
+            <div class="receipt-label">Tap to take photo or <span>choose from library</span></div>
+          </div>
+          <div class="preview-wrap" id="previewWrap">
+            <img id="previewImg" src="" alt="Receipt preview">
+            <button class="preview-remove" id="removeImg" type="button" aria-label="Remove photo">✕</button>
+            <div class="preview-name" id="previewName"></div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <button class="submit-btn" id="submitBtn" type="button">Submit Expense</button>
+
+      </div>
+    </div>
+
+    <!-- Success -->
+    <div class="status-card success" id="successCard">
+      <span class="status-icon">✓</span>
+      <div class="status-title">Expense logged</div>
+      <div class="status-sub" id="successSub">Added to the Blackline sheet.</div>
+      <button class="another-btn" id="anotherBtn">Log another expense</button>
+    </div>
+
+    <!-- Error -->
+    <div class="status-card error" id="errorCard">
+      <span class="status-icon">!</span>
+      <div class="status-title">Submission failed</div>
+      <div class="status-sub" id="errorSub">Check your connection and try again.</div>
+      <button class="another-btn" id="retryBtn">Try again</button>
+    </div>
+  </div>
+
+  <script>
+    // ── CONFIG ──────────────────────────────────────────────────────
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwrMLQktm0urlsL1yrhEVFJhsiOfnnIRG_C-lROFn8ZwdSXtl2T179Zz3Li7ny4eBvIPQ/exec';
+
+    // Get a free key at https://api.imgbb.com — replace this placeholder
+    const IMGBB_API_KEY = 'YOUR_IMGBB_KEY_HERE';
+
+    // Current inventory — update as vehicles come and go
+    const VEHICLES = [
+      { id: '065436', model: 'Passat 2015',     make: 'VW' },
+      { id: 'N03836', model: '328i BMW 2011',   make: 'BMW' },
+      { id: '553598', model: 'Leaf Plus 2024',  make: 'Nissan' },
+      { id: '117408', model: 'Volt 2018',       make: 'Chevy' },
+      { id: '649829', model: 'Prius 2013',      make: 'Toyota' },
+      { id: '000785', model: 'Touareg 2008',    make: 'VW' },
+      { id: '288157', model: '300C 2014',       make: 'Chrysler' },
+      { id: '561845', model: 'Nissan Leaf 2025',make: 'Nissan' },
+      { id: '099276', model: 'MB 300 2010',     make: 'Mercedes' },
+    ];
+    // ───────────────────────────────────────────────────────────────
+
+    let receiptBase64 = null;
+    let receiptFileName = null;
+
+    const $ = id => document.getElementById(id);
+    const vinInput       = $('vinInput');
+    const vinSuggestions = $('vinSuggestions');
+    const receiptFile    = $('receiptFile');
+    const previewWrap    = $('previewWrap');
+    const previewImg     = $('previewImg');
+    const previewName    = $('previewName');
+    const submitBtn      = $('submitBtn');
+    const receiptZone    = $('receiptZone');
+
+    // ── Vehicle autocomplete ──
+    vinInput.addEventListener('input', () => {
+      const q = vinInput.value.toLowerCase();
+      if (!q) { vinSuggestions.style.display = 'none'; return; }
+      const matches = VEHICLES.filter(v =>
+        v.id.toLowerCase().includes(q) ||
+        v.model.toLowerCase().includes(q) ||
+        v.make.toLowerCase().includes(q)
+      );
+      if (!matches.length) { vinSuggestions.style.display = 'none'; return; }
+      vinSuggestions.innerHTML = matches.map(v =>
+        `<div data-id="${v.id}" data-model="${v.model}">${v.model}<small>${v.id}</small></div>`
+      ).join('');
+      vinSuggestions.style.display = 'block';
+    });
+
+    vinSuggestions.addEventListener('click', e => {
+      const item = e.target.closest('[data-id]');
+      if (!item) return;
+      vinInput.value = item.dataset.id + ' — ' + item.dataset.model;
+      vinSuggestions.style.display = 'none';
+      vinInput.blur();
+    });
+
+    document.addEventListener('click', e => {
+      if (!vinInput.contains(e.target) && !vinSuggestions.contains(e.target))
+        vinSuggestions.style.display = 'none';
+    });
+
+    // ── Receipt photo ──
+    receiptFile.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      receiptFileName = file.name;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        receiptBase64 = ev.target.result.split(',')[1];
+        previewImg.src = ev.target.result;
+        previewName.textContent = file.name;
+        previewWrap.style.display = 'block';
+        receiptZone.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    $('removeImg').addEventListener('click', clearReceipt);
+
+    function clearReceipt() {
+      receiptBase64 = null;
+      receiptFileName = null;
+      previewWrap.style.display = 'none';
+      receiptZone.style.display = 'block';
+      receiptFile.value = '';
+    }
+
+    receiptZone.addEventListener('dragover', e => { e.preventDefault(); receiptZone.classList.add('dragover'); });
+    receiptZone.addEventListener('dragleave', () => receiptZone.classList.remove('dragover'));
+    receiptZone.addEventListener('drop', e => {
+      e.preventDefault();
+      receiptZone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        receiptFile.files = dt.files;
+        receiptFile.dispatchEvent(new Event('change'));
+      }
+    });
+
+    // ── ImgBB upload ──
+    async function uploadReceipt(base64, filename) {
+      if (IMGBB_API_KEY === 'YOUR_IMGBB_KEY_HERE') return '[no imgbb key set]';
+      const fd = new FormData();
+      fd.append('image', base64);
+      if (filename) fd.append('name', filename.replace(/\.[^/.]+$/, ''));
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        method: 'POST', body: fd
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error('ImgBB upload failed');
+      return data.data.url;
+    }
+
+    // ── Submit ──
+    submitBtn.addEventListener('click', async () => {
+      const vin         = vinInput.value.trim();
+      const amount      = $('amount').value.trim();
+      const description = $('description').value.trim();
+      const name        = $('submitterName').value.trim() || 'Employee';
+
+      let valid = true;
+      if (!vin)                          { shake(vinInput);              valid = false; }
+      if (!amount || isNaN(+amount))     { shake($('amount'));           valid = false; }
+      if (!description)                  { shake($('description'));      valid = false; }
+      if (!valid) return;
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner"></span>Submitting…';
+
+      let receiptUrl = '';
+      if (receiptBase64) {
+        try { receiptUrl = await uploadReceipt(receiptBase64, receiptFileName); }
+        catch (e) { receiptUrl = '[upload failed]'; }
+      }
+
+      const payload = {
+        vin,
+        amount: parseFloat(amount).toFixed(2),
+        description,
+        receiptUrl,
+        submittedBy: name
+      };
+
+      try {
+        // no-cors: Apps Script returns opaque response, but it still processes the POST
+        await fetch(APPS_SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        $('formSection').style.display = 'none';
+        $('successSub').textContent =
+          `$${parseFloat(amount).toFixed(2)} — "${description}" logged for ${vin}.`;
+        $('successCard').style.display = 'block';
+      } catch (e) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Submit Expense';
+        $('errorSub').textContent = e.message || 'Network error. Check your connection and try again.';
+        $('errorCard').style.display = 'block';
+      }
+    });
+
+    $('anotherBtn').addEventListener('click', resetForm);
+    $('retryBtn').addEventListener('click', () => {
+      $('errorCard').style.display = 'none';
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Submit Expense';
+    });
+
+    function resetForm() {
+      vinInput.value = '';
+      $('amount').value = '';
+      $('description').value = '';
+      $('submitterName').value = '';
+      clearReceipt();
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Submit Expense';
+      $('successCard').style.display = 'none';
+      $('errorCard').style.display = 'none';
+      $('formSection').style.display = 'block';
+      window.scrollTo(0, 0);
+    }
+
+    function shake(el) {
+      el.classList.remove('shake');
+      void el.offsetWidth;
+      el.classList.add('shake');
+      el.addEventListener('animationend', () => el.classList.remove('shake'), { once: true });
+      el.focus();
+    }
+  </script>
+</body>
+</html>
